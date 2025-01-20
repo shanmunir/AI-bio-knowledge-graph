@@ -77,8 +77,12 @@ WSGI_APPLICATION = 'dbexplorer.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'XXXX',  # Replace with your database name
+        'USER': 'XXXX',       # Replace with your PostgreSQL username
+        'PASSWORD': 'XXXXX',   # Replace with your PostgreSQL password
+        'HOST': 'XXXXX',           # Use the correct host, e.g., '127.0.0.1' or your DB server IP
+        'PORT': 'XXXX',                # Default PostgreSQL port
     }
 }
 

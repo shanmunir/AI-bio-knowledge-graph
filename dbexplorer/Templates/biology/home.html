@@ -30,9 +30,9 @@
                             <label for="species" class="form-label">Select Species</label>
                             <select id="species" name="species" class="form-select" required>
                                 <option value="" disabled selected>Select Species</option>
-                                <option value="species1">Species 1</option>
-                                <option value="species2">Species 2</option>
-                                <option value="species3">Species 3</option>
+                                {% for species in species_list %}
+                                <option value="{{ species.id }}">{{ species.specie_name }}</option>
+                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-4">

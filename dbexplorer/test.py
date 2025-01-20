@@ -576,9 +576,9 @@ if __name__ == "__main__":
     # directory_path = "/curatime/Merged_Triples"
     # db_manager.process_directory_and_create_tables(directory_path)
     # db_manager.drop_all_except_protected()
-    folder = "/curatime/Merged_Triples/human_triples"
-    specie_id = 3
-    db_manager.insert_data_from_files(folder, specie_id)
+    # folder = "/curatime/Merged_Triples/human_triples"
+    # specie_id = 3
+    # db_manager.insert_data_from_files(folder, specie_id)
     # folder="/curatime/Merged_Triples/thaliana_triples/lncRNA_miRNA_merged.tsv"
     # db_manager.insert_data_from_file(folder,specie_id)
     db_manager.close()
