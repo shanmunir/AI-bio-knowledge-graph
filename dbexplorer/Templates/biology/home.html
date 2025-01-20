@@ -1,0 +1,66 @@
+<!-- home.html -->
+{% extends 'biology/base.html' %}
+
+{% block innerpage %}
+  <div class="page-inner">
+
+    <div class="container">
+        <div class="content">
+            <h1>Welcome to relationsdb: Unleash the Power of Your Data</h1>
+            <p>At <span class="highlight">Relationsdb</span>, we offer you the tools to seamlessly explore, manage, and analyze your databases like never before. Whether you're a developer, data scientist, or business analyst, our intuitive interface and powerful search features help you unlock insights from your data with ease. Dive into the world of data exploration with DBExplorer, where you can visualize relationships, track performance metrics, and optimize your queries for maximum efficiency.</p>
+            <p>Our platform provides real-time insights, helps identify patterns, and makes data-driven decision-making simpler. With DBExplorer, you’ll never feel overwhelmed by your database again. We provide the right tools to navigate, analyze, and leverage your data to its full potential. From complex queries to detailed visualizations, DBExplorer is built to support all your data exploration needs.</p>
+            <p>Empower your <span class="highlight">data-driven decisions</span> today and experience the future of database management with DBExplorer.</p>
+        </div>
+    </div>
+
+    <br>
+
+    <div class="container my-6">
+        <!-- Beautiful Card Form -->
+        <div class="card shadow-lg mx-auto" style="max-width: 800px;"> <!-- Increased max-width to 800px -->
+            <div class="card-header text-center">
+                <h4>Species Search</h4>
+            </div>
+            <div class="card-body">
+                <!-- Form -->
+                <form method="POST">
+                    {% csrf_token %}  <!-- CSRF Token here -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="species" class="form-label">Select Species</label>
+                            <select id="species" name="species" class="form-select" required>
+                                <option value="" disabled selected>Select Species</option>
+                                <option value="species1">Species 1</option>
+                                <option value="species2">Species 2</option>
+                                <option value="species3">Species 3</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="source" class="form-label">Select Source</label>
+                            <select id="source" name="source" class="form-select" required>
+                                <option value="" disabled selected>Select Source</option>
+                                <option value="source1">Source 1</option>
+                                <option value="source2">Source 2</option>
+                                <option value="source3">Source 3</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="target" class="form-label">Select Target</label>
+                            <select id="target" name="target" class="form-select" required>
+                                <option value="" disabled selected>Select Target</option>
+                                <option value="target1">Target 1</option>
+                                <option value="target2">Target 2</option>
+                                <option value="target3">Target 3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Search Button -->
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">Search</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+  </div>
+{% endblock %}
