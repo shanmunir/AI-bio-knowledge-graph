@@ -75,16 +75,6 @@ WSGI_APPLICATION = 'dbexplorer.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'relations_database',  # Replace with your database name
-        'USER': 'shan',       # Replace with your PostgreSQL username
-        'PASSWORD': 'aCd543f',   # Replace with your PostgreSQL password
-        'HOST': 'pc-4354.kl.dfki.de',           # Use the correct host, e.g., '127.0.0.1' or your DB server IP
-        'PORT': '5432',                # Default PostgreSQL port
-    }
-}
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
