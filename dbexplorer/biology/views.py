@@ -102,21 +102,20 @@ def get_targets(request, species, source):
     return JsonResponse({"targets": target_data})
 
 
-# Example dataset for species, source, and target
+# Fetch dataset based on species, source, and target and return dummy values for score and relation
 def get_dataset(request, species, source, target):
-    # Simulate CSV data for the dataset
-    dataset = [
-        ["ID", "Value"],
-        [1, f"{species}-{source}-{target}-Data1"],
-        [2, f"{species}-{source}-{target}-Data2"],
-        [3, f"{species}-{source}-{target}-Data3"]
-    ]
+    # Dummy data generation based on species, source, and target
+    dummy_data = {
+        "score": "0.85",  # Example dummy score
+        "relation": "interaction",  # Example dummy relation
+    }
 
-    # Convert dataset to CSV format
-    csv_file = io.StringIO()
-    writer = csv.writer(csv_file)
-    writer.writerows(dataset)
-    csv_data = csv_file.getvalue()
-
-    return JsonResponse({"csv": csv_data})
+    # Add more logic here if you want to fetch real data from a database or API
+    return JsonResponse({
+        "species": species,
+        "source": source,
+        "target": target,
+        "score": dummy_data["score"],
+        "relation": dummy_data["relation"]
+    })
 

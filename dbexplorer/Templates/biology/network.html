@@ -8,93 +8,130 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.24.0/cytoscape.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        #network {
-            width: 100%;
-            height: 500px;
-            background-color: #f9f9f9;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            margin-top: 20px;
+        body {
+            font-family: Arial, sans-serif;
         }
 
-        #output {
-            margin-top: 20px;
-        }
-
-        #chart-container {
+        /* Updated container to make it smaller and more responsive */
+        .container {
+            max-width: 1000px; /* Max width for larger screens */
             margin-top: 30px;
         }
 
-        table {
-            margin-top: 20px;
-            width: 100%;
-            border-collapse: collapse;
+        #network-container {
+            display: flex;
+            flex-direction: row;
+            gap: 15px;
+            position: relative;
+            padding: 15px;
         }
 
-        table, th, td {
+        #network {
+            width: 70%; /* Reduced width */
+            height: 400px; /* Slightly smaller height */
+            background-color: #f9f9f9;
             border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        th, td {
+        #side-window {
+            position: relative;
+            width: 28%; /* Reduced width */
+            background-color: #fff;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            max-height: 400px; /* Adjusted max height */
+            overflow-y: auto;
+        }
+
+        #side-window h4 {
+            margin-top: 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        #side-window p {
+            margin: 5px 0;
+        }
+
+        #side-window select {
+            width: 100%;
+            padding: 6px; /* Smaller padding */
+            margin-top: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        /* Improved button styling */
+        button {
+            margin-top: 10px;
+            width: 100%;
             padding: 8px;
-            text-align: left;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+        }
+
+        /* Responsive Design for small screens */
+        @media (max-width: 768px) {
+            #network-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            #network {
+                width: 100%;
+            }
+
+            #side-window {
+                width: 100%;
+            }
+
+            .container {
+                padding: 0 15px; /* Added padding for smaller screens */
+            }
         }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8">
+        <div class="col-md-12">
             <div class="card">
                 <div class="card-header text-center">Interactive Cytoscape Network</div>
                 <div class="card-body">
-                    <div id="network"></div>
+                    <div id="network-container">
+                        <div id="network"></div>
+                        <div id="side-window">
+                            <h3><b>Information</b></h3>
+                            <div id="side-window-content">
+                                <!-- Dynamic content will be populated here -->
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div id="output"></div>
-
-    <div id="chart-container">
-        <canvas id="myChart"></canvas>
-    </div>
-
-    <div id="table-container">
-        <table id="network-table">
-            <thead>
-                <tr>
-                    <th>Species</th>
-                    <th>Source</th>
-                    <th>Target</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Dynamic table rows will go here -->
-            </tbody>
-        </table>
     </div>
 </div>
 
 <script>
     let cy;
-    let activeSpeciesNode = null;
+    let activeSpeciesNode = null; // Track the currently active species
     const colorPalette = [
         '#ff7043', '#42a5f5', '#66bb6a', '#ab47bc', '#ffa726',
         '#29b6f6', '#d4e157', '#ef5350', '#26c6da', '#7e57c2',
         '#8e24aa', '#00acc1', '#3949ab', '#fb8c00', '#7cb342'
     ];
-    let expandedNodes = {};  // To keep track of expanded nodes for each species
-
-    async function fetchData(url) {
-        try {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
-            return await response.json();
-        } catch (error) {
-            console.error(`Failed to fetch ${url}:`, error);
-            return null;
-        }
-    }
 
     function randomColor() {
         return colorPalette[Math.floor(Math.random() * colorPalette.length)];
@@ -118,8 +155,7 @@
                         'font-weight': 'bold',
                         'background-color': 'data(color)',
                         'border-width': 2,
-                        'border-color': '#fff',
-                        'opacity': 1
+                        'border-color': '#fff'
                     }
                 },
                 {
@@ -127,35 +163,13 @@
                     style: {
                         'width': 2,
                         'line-color': '#ccc',
-                        'target-arrow-color': '#ccc',
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier',
-                        'opacity': 1
-                    }
-                },
-                {
-                    selector: '.faded',
-                    style: {
-                        'opacity': 0.2,
-                        'z-index': 0
-                    }
-                },
-                {
-                    selector: '.highlighted',
-                    style: {
-                        'border-width': 3,
-                        'border-color': '#ff5722',
-                        'line-color': '#ff5722',
-                        'target-arrow-color': '#ff5722',
-                        'z-index': 9999
+                        'curve-style': 'bezier'
                     }
                 }
             ],
             layout: {
-                name: 'concentric',
-                concentric: node => (node.id() === 'species' ? 100 : 50),
-                levelWidth: () => 1,
-                spacingFactor: 2,
+                name: 'cose',
+                animate: true
             }
         });
 
@@ -165,81 +179,124 @@
                     data: { id: name, label: name, color: randomColor() }
                 }));
 
-                // Add species nodes
+                cy.add(speciesNodes);
+
                 speciesNodes.forEach(node => {
-                    if (cy.getElementById(node.data.id).empty()) {
-                        cy.add(node);
-                    }
+                    cy.add({ data: { id: `species->${node.data.id}`, source: 'species', target: node.data.id } });
                 });
 
-                // Add edges from the central "species" node
-                speciesNodes.forEach(node => {
-                    const edgeId = `species->${node.data.id}`;
-                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
-                        cy.add({ data: { id: edgeId, source: 'species', target: node.data.id } });
-                    }
-                });
+                cy.layout({ name: 'cose', animate: true }).run();
 
-                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+                populateSpeciesDropdown(speciesNodes.map(node => node.data.id));
+            }
+        });
 
-                cy.on('tap', 'node', event => {
-                    const nodeId = event.target.id();
-                    if (activeSpeciesNode && activeSpeciesNode !== nodeId) {
-                        collapsePreviousSpecies(activeSpeciesNode);  // Collapse the previous species' expanded nodes
-                    }
-                    highlightNodeAndEdges(event.target);
-                    if (nodeId.includes('_')) { // If it's a source node, expand its targets
-                        expandTargets(nodeId);
-                    } else {
-                        expandSources(nodeId);  // For species node, expand its sources
-                    }
-                    activeSpeciesNode = nodeId;
-                    updateChart(nodeId);  // Update the chart based on the selected node
-                    updateTable(nodeId);  // Update the table based on the selected node
-                });
+        cy.on('tap', 'node', function (event) {
+            const node = event.target;
+            handleNodeClick(node);
+        });
+    }
 
-                cy.on('mouseover', 'node', event => {
-                    highlightNodeAndEdges(event.target);
-                });
+    function populateSpeciesDropdown(speciesList) {
+        const sideWindowContent = document.getElementById('side-window-content');
+        sideWindowContent.innerHTML = `
+            <h4>Select Species</h4>
+            <select id="species-selector" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                ${speciesList.map(species => `<option value="${species}">${species}</option>`).join('')}
+            </select>
+            <button id="search-species">Search</button>
+        `;
 
-                cy.on('mouseout', 'node', () => {
-                    resetHighlights();
-                });
+        document.getElementById('search-species').addEventListener('click', () => {
+            const selectedSpecies = document.getElementById('species-selector').value;
+            if (selectedSpecies) {
+                handleSpeciesSelection(selectedSpecies);
             }
         });
     }
 
-    function highlightNodeAndEdges(node) {
-        cy.elements().addClass('faded');
-        node.removeClass('faded');
-        node.connectedEdges().removeClass('faded');
-        node.connectedEdges().targets().removeClass('faded');
+    function handleSpeciesSelection(species) {
+        if (activeSpeciesNode && activeSpeciesNode !== species) {
+            resetNetwork();
+        }
+
+        expandSources(species);
+        activeSpeciesNode = species;
+        updateSideWindow(`
+            <h4>Selected Species</h4>
+            <p><strong>Species:</strong> ${species}</p>
+            <p>Select a Source:</p>
+            <select id="source-selector"></select>
+        `);
     }
 
-    function resetHighlights() {
-        cy.elements().removeClass('faded');
+    function resetNetwork() {
+        cy.elements().not('#species').remove();
+        cy.layout({ name: 'cose', animate: true }).run();
+        activeSpeciesNode = null;
     }
 
     function expandSources(species) {
-        fetchData(`/network/get_sources/${species}/`).then(data => {
+        fetchData(`/network/get_sources/${species}`).then(data => {
             if (data && data.sources) {
-                const sourceNodes = data.sources.map(source => ({
-                    data: { id: `${species}_${source}`, label: source, color: randomColor() }
-                }));
-
-                // Add source nodes and edges
-                sourceNodes.forEach(node => {
-                    if (cy.getElementById(node.data.id).empty()) {
-                        cy.add(node);
-                    }
-                    const edgeId = `${species}->${node.data.id}`;
-                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
-                        cy.add({ data: { id: edgeId, source: species, target: node.data.id } });
+                data.sources.forEach(source => {
+                    const sourceNodeId = `${species}_${source}`;
+                    if (cy.getElementById(sourceNodeId).empty()) {
+                        cy.add({
+                            data: { id: sourceNodeId, label: source, color: randomColor() }
+                        });
+                        cy.add({
+                            data: { id: `${species}->${sourceNodeId}`, source: species, target: sourceNodeId }
+                        });
                     }
                 });
 
-                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
-                expandedNodes[species] = sourceNodes; // Keep track of expanded nodes
+                cy.layout({ name: 'cose', animate: true }).run();
+                populateSourceDropdown(data.sources, species);
+            }
+        });
+    }
+
+    function populateSourceDropdown(sources, species) {
+        const sideWindowContent = document.getElementById('side-window-content');
+        sideWindowContent.innerHTML = `
+            <h4>Selected Details</h4>
+            <p><strong>Species:</strong> ${species}</p>
+            <p>Select a Source:</p>
+            <select id="source-selector" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                ${sources.map(source => `<option value="${source}">${source}</option>`).join('')}
+            </select>
+            <button id="search-source">Search Source</button>
+        `;
+
+        document.getElementById('search-source').addEventListener('click', () => {
+            const selectedSource = document.getElementById('source-selector').value;
+            if (selectedSource) {
+                console.log(`Selected Source: ${selectedSource}`);
+                expandTargets(`${species}_${selectedSource}`);
+                populateTargetUI(selectedSource, species);
+            }
+        });
+    }
+
+    function populateTargetUI(selectedSource, species) {
+        const sideWindowContent = document.getElementById('side-window-content');
+        sideWindowContent.innerHTML = `
+            <h4>Source Selected</h4>
+            <p><strong>Species:</strong> ${species}</p>
+            <p><strong>Selected Source:</strong> ${selectedSource}</p>
+            <p>Select a Target:</p>
+            <select id="target-selector" style="width: 100%; padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+                <!-- Targets will be dynamically loaded here -->
+            </select>
+            <button id="search-target">Search Target</button>
+        `;
+
+        document.getElementById('search-target').addEventListener('click', () => {
+            const selectedTarget = document.getElementById('target-selector').value;
+            if (selectedTarget) {
+                console.log(`Selected Target: ${selectedTarget}`);
+                showTargetDetails(selectedTarget, species, selectedSource);
             }
         });
     }
@@ -248,84 +305,55 @@
         const [species, source] = sourceNodeId.split('_');
         fetchData(`/network/get_targets/${species}/${source}`).then(data => {
             if (data && data.targets) {
-                const targetNodes = data.targets.map(target => ({
-                    data: { id: `${species}_${source}_${target}`, label: target, color: randomColor() }
-                }));
+                const targetSelector = document.getElementById('target-selector');
+                if (targetSelector) {
+                    targetSelector.innerHTML = data.targets.map(target => `<option value="${target}">${target}</option>`).join('');
+                }
 
-                // Add target nodes and edges only if they don't already exist
-                targetNodes.forEach(node => {
-                    if (cy.getElementById(node.data.id).empty()) {
-                        cy.add(node);
-                        const edgeId = `${sourceNodeId}->${node.data.id}`;
-                        if (cy.edges(`[id="${edgeId}"]`).length === 0) {
-                            cy.add({ data: { id: edgeId, source: sourceNodeId, target: node.data.id } });
-                        }
+                data.targets.forEach(target => {
+                    const targetNodeId = `${sourceNodeId}_${target}`;
+                    if (cy.getElementById(targetNodeId).empty()) {
+                        cy.add({
+                            data: { id: targetNodeId, label: target, species, source, color: randomColor() }
+                        });
+                        cy.add({
+                            data: { id: `${sourceNodeId}->${targetNodeId}`, source: sourceNodeId, target: targetNodeId }
+                        });
                     }
                 });
 
-                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+                cy.layout({ name: 'cose', animate: true }).run();
             }
         });
     }
 
-    function collapsePreviousSpecies(species) {
-        if (expandedNodes[species]) {
-            expandedNodes[species].forEach(node => {
-                const connectedEdges = cy.edges(`[source="${species}"][target="${node.data.id}"]`);
-                connectedEdges.forEach(edge => edge.removeClass('highlighted'));
-            });
-        }
-        expandedNodes[species] = []; // Reset expanded nodes for the previous species
+    function showTargetDetails(target, species, source) {
+        fetch(`/network/get_dataset/${species}/${source}/${target}/`)
+            .then(response => response.json())
+            .then(data => {
+                updateSideWindow(`
+                    <h4>Target Details</h4>
+                    <p><strong>Species:</strong> ${species}</p>
+                    <p><strong>Source:</strong> ${source}</p>
+                    <p><strong>Target:</strong> ${target}</p>
+                    <p><strong>Relation:</strong> ${data.relation}</p>
+                    <p><strong>Score:</strong> ${data.score}</p>
+                `);
+            })
+            .catch(error => console.error('Error fetching dataset details:', error));
     }
 
-    // Bar chart function
-    function updateChart(nodeId) {
-        fetchData(`/network/get_chart_data/${nodeId}/`).then(data => {
-            if (data && data.labels && data.values) {
-                const ctx = document.getElementById('myChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: `${nodeId} Data`,
-                            data: data.values,
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-        });
+    function fetchData(url) {
+        return fetch(url).then(response => response.json());
     }
 
-    // Table function
-    function updateTable(nodeId) {
-        fetchData(`/network/get_table_data/${nodeId}/`).then(data => {
-            const tbody = document.querySelector('#network-table tbody');
-            tbody.innerHTML = ''; // Clear existing table rows
-
-            if (data && data.table) {
-                data.table.forEach(row => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${row.species}</td><td>${row.source}</td><td>${row.target}</td>`;
-                    tbody.appendChild(tr);
-                });
-            }
-        });
+    function updateSideWindow(content) {
+        const sideWindowContent = document.getElementById('side-window-content');
+        sideWindowContent.innerHTML = content;
     }
 
-    // Initialize network
-    document.addEventListener('DOMContentLoaded', initializeNetwork);
+    window.onload = initializeNetwork;
 </script>
+
 </body>
 </html>

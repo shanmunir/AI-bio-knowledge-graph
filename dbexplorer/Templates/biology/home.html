@@ -128,9 +128,7 @@
 
 {% block staticfiles %}
 
-    <!-- Cytoscape Script -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.24.0/cytoscape.min.js"></script>
-  <script>
+<script>
     let cy;
     let activeSpeciesNode = null;
     const colorPalette = [
@@ -138,7 +136,7 @@
         '#29b6f6', '#d4e157', '#ef5350', '#26c6da', '#7e57c2',
         '#8e24aa', '#00acc1', '#3949ab', '#fb8c00', '#7cb342'
     ];
-    let expandedNodes = {};  // To keep track of expanded nodes for each species
+    let expandedNodes = {}; // Track expanded nodes for each species
 
     async function fetchData(url) {
         try {
@@ -173,8 +171,7 @@
                         'font-weight': 'bold',
                         'background-color': 'data(color)',
                         'border-width': 2,
-                        'border-color': '#fff',
-                        'opacity': 1
+                        'border-color': '#fff'
                     }
                 },
                 {
@@ -182,17 +179,7 @@
                     style: {
                         'width': 2,
                         'line-color': '#ccc',
-                        'target-arrow-color': '#ccc',
-                        'target-arrow-shape': 'triangle',
-                        'curve-style': 'bezier',
-                        'opacity': 1
-                    }
-                },
-                {
-                    selector: '.faded',
-                    style: {
-                        'opacity': 0.2,
-                        'z-index': 0
+                        'curve-style': 'bezier'
                     }
                 },
                 {
@@ -201,16 +188,19 @@
                         'border-width': 3,
                         'border-color': '#ff5722',
                         'line-color': '#ff5722',
-                        'target-arrow-color': '#ff5722',
                         'z-index': 9999
+                    }
+                },
+                {
+                    selector: '.faded',
+                    style: {
+                        'opacity': 0.2
                     }
                 }
             ],
             layout: {
-                name: 'concentric',
-                concentric: node => (node.id() === 'species' ? 100 : 50),
-                levelWidth: () => 1,
-                spacingFactor: 2,
+                name: 'cose',
+                animate: true
             }
         });
 
@@ -230,157 +220,147 @@
                 // Add edges from the central "species" node
                 speciesNodes.forEach(node => {
                     const edgeId = `species->${node.data.id}`;
-                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
+                    if (cy.edges(`[id="${edgeId}"]`).empty()) {
                         cy.add({ data: { id: edgeId, source: 'species', target: node.data.id } });
                     }
                 });
 
-                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+                cy.layout({ name: 'cose', animate: true }).run();
 
                 cy.on('tap', 'node', event => {
                     const nodeId = event.target.id();
                     if (activeSpeciesNode && activeSpeciesNode !== nodeId) {
-                        collapsePreviousSpecies(activeSpeciesNode);  // Collapse the previous species' expanded nodes
+                        collapsePreviousSpecies(activeSpeciesNode); // Collapse previously expanded nodes
                     }
-                    highlightNodeAndEdges(event.target);
-                    if (nodeId.includes('_')) { // If it's a source node, expand its targets
+                    highlightMainAndConnected(event.target); // Highlight main species, clicked node, and connections
+                    if (nodeId.includes('_')) {
+                        // Clicked a source node, expand targets
                         expandTargets(nodeId);
                     } else {
-                        expandSources(nodeId);  // For species node, expand its sources
+                        // Clicked a species node, expand sources
+                        expandSources(nodeId);
                     }
                     activeSpeciesNode = nodeId;
-                    updateChart(nodeId);  // Update the chart based on the selected node
-                    updateTable(nodeId);  // Update the table based on the selected node
-                });
-
-                cy.on('mouseover', 'node', event => {
-                    highlightNodeAndEdges(event.target);
-                });
-
-                cy.on('mouseout', 'node', () => {
-                    resetHighlights();
                 });
             }
         });
     }
 
-    function highlightNodeAndEdges(node) {
-        cy.elements().addClass('faded');
-        node.removeClass('faded');
-        node.connectedEdges().removeClass('faded');
-        node.connectedEdges().targets().removeClass('faded');
-    }
+    function highlightMainAndConnected(node) {
+        cy.elements().addClass('faded'); // Fade all elements
 
-    function resetHighlights() {
-        cy.elements().removeClass('faded');
+        // Highlight main species node
+        const mainSpeciesNode = cy.getElementById('species');
+        mainSpeciesNode.removeClass('faded').addClass('highlighted');
+
+        // Highlight clicked node and its connections
+        node.removeClass('faded').addClass('highlighted');
+        node.connectedEdges().removeClass('faded').addClass('highlighted');
+        node.connectedEdges().targets().removeClass('faded').addClass('highlighted');
     }
 
     function expandSources(species) {
         fetchData(`/network/get_sources/${species}/`).then(data => {
             if (data && data.sources) {
-                const sourceNodes = data.sources.map(source => ({
-                    data: { id: `${species}_${source}`, label: source, color: randomColor() }
-                }));
+                const newSourceNodes = [];
 
-                // Add source nodes and edges
-                sourceNodes.forEach(node => {
-                    if (cy.getElementById(node.data.id).empty()) {
-                        cy.add(node);
-                    }
-                    const edgeId = `${species}->${node.data.id}`;
-                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
-                        cy.add({ data: { id: edgeId, source: species, target: node.data.id } });
+                data.sources.forEach(source => {
+                    const sourceNodeId = `${species}_${source}`;
+
+                    // Check if source node already exists
+                    if (cy.getElementById(sourceNodeId).empty()) {
+                        // Add source node
+                        cy.add({
+                            data: { id: sourceNodeId, label: source, color: randomColor() }
+                        });
+
+                        // Add edge from species to source
+                        cy.add({
+                            data: { id: `${species}->${sourceNodeId}`, source: species, target: sourceNodeId }
+                        });
+
+                        newSourceNodes.push(sourceNodeId);
                     }
                 });
 
-                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
-                expandedNodes[species] = sourceNodes; // Keep track of expanded nodes
+                // Update layout and focus on species node
+                if (newSourceNodes.length > 0) {
+                    cy.layout({ name: 'cose', animate: true }).run();
+                }
+
+                highlightSelection(species, newSourceNodes, []);
             }
         });
     }
 
     function expandTargets(sourceNodeId) {
-        const [species, source] = sourceNodeId.split('_');
-        fetchData(`/network/get_targets/${species}/${source}`).then(data => {
-            if (data && data.targets) {
-                const targetNodes = data.targets.map(target => ({
-                    data: { id: `${species}_${source}_${target}`, label: target, color: randomColor() }
-                }));
+    const [species, source] = sourceNodeId.split('_'); // Split the sourceNodeId to extract species and source
+    fetchData(`/network/get_targets/${species}/${source}`).then(data => {
+        if (data && data.targets) {
+            // Map targets to Cytoscape-compatible nodes
+            const targetNodes = data.targets.map(target => ({
+                data: { id: `${species}_${source}_${target}`, label: target, color: randomColor() }
+            }));
 
-                // Add target nodes and edges only if they don't already exist
-                targetNodes.forEach(node => {
-                    if (cy.getElementById(node.data.id).empty()) {
-                        cy.add(node);
-                        const edgeId = `${sourceNodeId}->${node.data.id}`;
-                        if (cy.edges(`[id="${edgeId}"]`).length === 0) {
-                            cy.add({ data: { id: edgeId, source: sourceNodeId, target: node.data.id } });
-                        }
+            // Add target nodes and edges only if they don't already exist
+            targetNodes.forEach(node => {
+                if (cy.getElementById(node.data.id).empty()) {
+                    // Add target node to the network
+                    cy.add(node);
+
+                    // Create edges between the source node and the new target node
+                    const edgeId = `${sourceNodeId}->${node.data.id}`;
+                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
+                        cy.add({ data: { id: edgeId, source: sourceNodeId, target: node.data.id } });
                     }
-                });
+                }
+            });
 
-                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+            // Re-run the layout to organize the new nodes (use 'cose' layout for consistency)
+            cy.layout({
+                name: 'cose',
+                animate: true, // Animates the transition
+                animateFilter: function( element, i ) {
+                    // Animate only the newly added nodes and edges
+                    return element.isNode() && i >= targetNodes.length;
+                }
+            }).run();
+        }
+    }).catch(error => {
+        console.error("Error fetching target data:", error);
+    });
+}
+
+
+    // Show details of the target node
+    function displayTargetDetails(target) {
+        // Fetch the details (interaction, relation, score, etc.) of the target from the server
+        fetchData(`/network/get_target_details/${target}`).then(data => {
+            if (data) {
+                // Display target details in the output section
+                const outputDiv = document.getElementById('output');
+                outputDiv.innerHTML = `
+                    <h4>Target Details: ${target}</h4>
+                    <p><strong>Interaction:</strong> ${data.interaction || 'N/A'}</p>
+                    <p><strong>Relation:</strong> ${data.relation || 'N/A'}</p>
+                    <p><strong>Score:</strong> ${data.score || 'N/A'}</p>
+                `;
             }
+        }).catch(error => {
+            console.error("Error fetching target details:", error);
         });
     }
 
     function collapsePreviousSpecies(species) {
         if (expandedNodes[species]) {
             expandedNodes[species].forEach(node => {
-                const connectedEdges = cy.edges(`[source="${species}"][target="${node.data.id}"]`);
-                connectedEdges.forEach(edge => edge.removeClass('highlighted'));
+                cy.remove(cy.getElementById(node.data.id));
             });
+            delete expandedNodes[species];
         }
-        expandedNodes[species] = []; // Reset expanded nodes for the previous species
     }
 
-    // Bar chart function
-    function updateChart(nodeId) {
-        fetchData(`/network/get_chart_data/${nodeId}/`).then(data => {
-            if (data && data.labels && data.values) {
-                const ctx = document.getElementById('myChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.labels,
-                        datasets: [{
-                            label: `${nodeId} Data`,
-                            data: data.values,
-                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                            borderColor: 'rgba(255, 99, 132, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    // Table function
-    function updateTable(nodeId) {
-        fetchData(`/network/get_table_data/${nodeId}/`).then(data => {
-            const tbody = document.querySelector('#network-table tbody');
-            tbody.innerHTML = ''; // Clear existing table rows
-
-            if (data && data.table) {
-                data.table.forEach(row => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `<td>${row.species}</td><td>${row.source}</td><td>${row.target}</td>`;
-                    tbody.appendChild(tr);
-                });
-            }
-        });
-    }
-
-    // Initialize network
     document.addEventListener('DOMContentLoaded', initializeNetwork);
-  </script>
+</script>
 
 {% endblock %}
