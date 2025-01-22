@@ -151,12 +151,12 @@ b, .b, strong, .strong {
 .page-title {
   font-size: 23px;
   font-weight: 600;
-  color: #444444;
+  color: #ffffff;
   line-height: 30px;
   margin-bottom: 20px; }
 
 .page-category {
-  color: #444444;
+  color: #ffffff;
   line-height: 1.8;
   margin-bottom: 25px; }
 
@@ -326,7 +326,7 @@ body {
   border: 1px solid #eaeaea; }
 
 .main-header {
-  background: #ffffff;
+  background: rgba(0, 0, 0, 0.125);
   min-height: 60px;
   width: calc(100% - 250px);
   position: fixed;

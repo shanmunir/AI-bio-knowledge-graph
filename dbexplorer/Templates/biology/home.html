@@ -1,6 +1,48 @@
 <!-- home.html -->
 {% extends 'biology/base.html' %}
 
+
+{% block stylefiles %}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.24.0/cytoscape.min.js"></script>
+    <style>
+        /* Make the network container a square and larger */
+        #network {
+            width: 100%;
+            height: 500px; /* Increased size for better visibility */
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        /* Ensure the container is responsive */
+        @media (max-width: 768px) {
+            #network {
+                height: 300px; /* Smaller height for mobile */
+            }
+        }
+
+        #output {
+            margin-top: 20px;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+
+        /* For smaller screens */
+        @media (max-width: 768px) {
+            .card {
+                padding: 10px;
+            }
+        }
+    </style>
+
+{% endblock %}
+
+
 {% block innerpage %}
   <div class="page-inner">
 
@@ -16,10 +58,23 @@
     <br>
 
     <div class="container my-6">
+        <div class="card">
+            <div class="card-header text-center">
+                <h4><b>Relationdb:</b> Species Search through Network</h4>
+            </div>
+            <div class="card-body">
+                <div id="network"></div>
+            </div>
+        </div>
+    </div>
+
+      <br> <center><b>OR</b></center><br>
+
+      <div class="container my-6">
         <!-- Beautiful Card Form -->
         <div class="card shadow-lg mx-auto" style="max-width: 800px;"> <!-- Increased max-width to 800px -->
             <div class="card-header text-center">
-                <h4>Species Search</h4>
+                <h4><b>Relationdb:</b> Species Search through Form Request</h4>
             </div>
             <div class="card-body">
                 <!-- Form -->
@@ -30,9 +85,9 @@
                             <label for="species" class="form-label">Select Species</label>
                             <select id="species" name="species" class="form-select" required>
                                 <option value="" disabled selected>Select Species</option>
-                                <option value="species1">Species 1</option>
-                                <option value="species2">Species 2</option>
-                                <option value="species3">Species 3</option>
+                                {% for species in species_list %}
+                                <option value="{{ species.id }}">{{ species.specie_name }}</option>
+                                 {% endfor %}
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -62,5 +117,213 @@
             </div>
         </div>
     </div>
+
   </div>
+
+{% endblock %}
+
+
+{% block staticfiles %}
+
+<!-- Cytoscape Script -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.24.0/cytoscape.min.js"></script>
+  <script>
+      let cy;
+      const speciesColors = [
+          '#ff7043', '#42a5f5', '#66bb6a', '#ab47bc', '#ffa726',
+          '#29b6f6', '#d4e157', '#ef5350', '#26c6da', '#7e57c2'
+      ];
+
+      const sourceColor = '#42a5f5';  // Color for source nodes
+      const targetColor = '#ff7043';  // Color for target nodes
+
+      // Function to fetch data from the server
+      async function fetchData(url) {
+          try {
+              const response = await fetch(url);
+              if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+              return await response.json();
+          } catch (error) {
+              console.error(`Failed to fetch ${url}:`, error);
+              return null;
+          }
+      }
+
+      // Initialize the Cytoscape network
+      function initializeNetwork() {
+          cy = cytoscape({
+              container: document.getElementById('network'),
+              elements: [{ data: { id: 'species', label: 'Species' } }],
+              style: [
+                  {
+                      selector: 'node',
+                      style: {
+                          'label': 'data(label)',
+                          'width': '50px',
+                          'height': '50px',
+                          'text-valign': 'center',
+                          'text-halign': 'center',
+                          'color': 'white',
+                          'font-size': '12px',
+                          'font-weight': 'bold',
+                          'border-width': 2,
+                          'border-color': '#fff',
+                          'transition-property': 'box-shadow, border-color',
+                          'transition-duration': '0.3s',
+                          'transition-timing-function': 'ease-in-out'
+                      }
+                  },
+                  {
+                      selector: '.source-node',
+                      style: { 'background-color': sourceColor }
+                  },
+                  {
+                      selector: '.target-node',
+                      style: { 'background-color': targetColor }
+                  },
+                  {
+                      selector: 'edge',
+                      style: {
+                          'width': 2,
+                          'line-color': '#ccc',
+                          'target-arrow-color': '#ccc',
+                          'target-arrow-shape': 'triangle',
+                          'curve-style': 'bezier',
+                          'transition-property': 'opacity, line-color',
+                          'transition-duration': '0.3s',
+                          'transition-timing-function': 'ease-in-out'
+                      }
+                  },
+                  {
+                      selector: 'node.hover',
+                      style: {
+                          'box-shadow': '0 0 10px 3px #333333', /* Dark gray highlight effect */
+                          'border-color': '#333333'
+                      }
+                  },
+                  {
+                      selector: 'edge.hover',
+                      style: {
+                          'line-color': '#333333', /* Dark gray highlight for edges */
+                          'opacity': 1
+                      }
+                  }
+              ],
+              layout: {
+                  name: 'concentric',
+                  concentric: node => (node.id() === 'species' ? 100 : 50),
+                  levelWidth: () => 1,
+                  spacingFactor: 2,
+                  animate: true
+              }
+          });
+
+          fetchData('/network/get_species/').then(data => {
+              if (data && data.nodes) {
+                  const speciesNodes = data.nodes.map((name, index) => ({
+                      data: { id: name, label: name, classes: 'species-node' },
+                      style: { 'background-color': speciesColors[index % speciesColors.length] }
+                  }));
+
+                  cy.add(speciesNodes);
+                  speciesNodes.forEach(node => {
+                      cy.add({ data: { source: 'species', target: node.data.id } });
+                  });
+
+                  cy.layout({
+                      name: 'concentric',
+                      concentric: node => (node.id() === 'species' ? 200 : 100),
+                      levelWidth: () => 1,
+                      spacingFactor: 1.5
+                  }).run();
+
+                  // Add hover and click events for nodes
+                  addHighlightEvents();
+              } else {
+                  console.error('No species data received.');
+              }
+          });
+      }
+
+      let expandedSpecies = null;
+
+      // Add hover and click effects for nodes
+      function addHighlightEvents() {
+          cy.on('mouseover', 'node', event => {
+              const node = event.target;
+              node.addClass('hover');
+              highlightConnectedEdges(node, true);
+          });
+
+          cy.on('mouseout', 'node', event => {
+              const node = event.target;
+              node.removeClass('hover');
+              highlightConnectedEdges(node, false);
+          });
+
+          // For mobile and touch-based devices (click event)
+          cy.on('tap', 'node', event => {
+              const node = event.target;
+
+              // If the clicked node is the central species node, reset the network
+              if (node.id() === 'species') {
+                  resetNetwork();
+              } else {
+                  expandNetwork(node.id());  // Expand sources if not already expanded
+              }
+          });
+      }
+
+      // Highlight connected edges of a node
+      function highlightConnectedEdges(node, highlight) {
+          const edges = node.connectedEdges();
+          edges.forEach(edge => {
+              if (highlight) {
+                  edge.addClass('hover');
+              } else {
+                  edge.removeClass('hover');
+              }
+          });
+      }
+
+      // Expand network based on the clicked node
+      function expandNetwork(speciesId) {
+          if (expandedSpecies === speciesId) return; // Prevent expanding the same species
+
+          expandedSpecies = speciesId;
+
+          // Fetch and add related nodes (dummy data example for now)
+          fetchData(`/network/expand_species/${speciesId}`).then(data => {
+              if (data && data.nodes) {
+                  const newNodes = data.nodes.map(nodeName => ({
+                      data: { id: nodeName, label: nodeName }
+                  }));
+
+                  cy.add(newNodes);
+                  newNodes.forEach(node => {
+                      cy.add({
+                          data: { source: speciesId, target: node.data.id }
+                      });
+                  });
+
+                  cy.layout({
+                      name: 'concentric',
+                      concentric: node => (node.id() === speciesId ? 200 : 100),
+                      levelWidth: () => 1,
+                      spacingFactor: 1.5
+                  }).run();
+              }
+          });
+      }
+
+      // Reset the network to the initial state
+      function resetNetwork() {
+          cy.elements().remove();
+          cy.add({ data: { id: 'species', label: 'Species' } });
+          initializeNetwork();
+      }
+
+      document.addEventListener('DOMContentLoaded', initializeNetwork);
+  </script>
+
 {% endblock %}

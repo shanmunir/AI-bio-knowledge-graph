@@ -3,75 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive Expanding Biological Network</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-KyZXEJasx+GhYlLgV0kTqG6FjhUBP/jOmOh2e6o8C5qaA8v4Vxk9QFJ1HPlzRvaK" crossorigin="anonymous">
+    <title>Interactive Cytoscape Network</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.24.0/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f8f9fa;
-            padding: 20px;
-            margin: 0;
-        }
-
-        h1 {
-            text-align: center;
-            font-size: 2.5rem;
-            color: #343a40;
-            margin-bottom: 30px;
-        }
-
         #network {
             width: 100%;
-            height: 80vh;
+            height: 500px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
             border-radius: 10px;
-            background-color: #e0f7fa;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-            position: relative;
+            margin-top: 20px;
         }
 
         #output {
             margin-top: 20px;
-            padding: 15px;
-            background-color: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
-        .node {
-            padding: 10px;
-            border-radius: 50%;
-            color: white;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.3s ease-in-out;
-        }
-
-        .species-node {
-            background-color: #FF6F61; /* New color */
-            font-size: 16px;
-        }
-
-        .source-node {
-            background-color: #5C6BC0; /* New color */
-            font-size: 14px;
-        }
-
-        .target-node {
-            background-color: #66BB6A; /* New color */
-            font-size: 12px;
-        }
-
-        .node:hover {
-            transform: scale(1.2);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        #chart-container {
+            margin-top: 30px;
         }
 
         table {
+            margin-top: 20px;
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
         }
 
         table, th, td {
@@ -82,231 +39,293 @@
             padding: 8px;
             text-align: left;
         }
-
-        th {
-            background-color: #f2f2f2;
-        }
-
-        /* Responsive design */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 2rem;
-            }
-
-            #network {
-                height: 60vh;
-            }
-        }
-
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 1.5rem;
-            }
-
-            #network {
-                height: 50vh;
-            }
-        }
     </style>
 </head>
-<body class="container">
-
-    <h1>Interactive Expanding Biological Network</h1>
-    <div id="network" class="mb-4"></div>
+<body>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header text-center">Interactive Cytoscape Network</div>
+                <div class="card-body">
+                    <div id="network"></div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div id="output"></div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.22.0/cytoscape.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js" integrity="sha384-oBqDVmMz4fnFO9gyb1G9E5b0bWY2c5wz7go8h7RpF3c5vzt3gmZmdDR7V8ddEn2Y" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.min.js" integrity="sha384-pzjw8f+ua7Kw1TIq0J9Fjs8DpA5MyI7zfwL+ccRql6Z6OgaO5vqXt32JbXf3J4Kn" crossorigin="anonymous"></script>
-    <script>
-        let cy;
+    <div id="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
 
-        // Function to fetch data from the server
-        async function fetchData(url) {
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
-                return await response.json();
-            } catch (error) {
-                console.error(`Failed to fetch ${url}:`, error);
-                return null;
-            }
+    <div id="table-container">
+        <table id="network-table">
+            <thead>
+                <tr>
+                    <th>Species</th>
+                    <th>Source</th>
+                    <th>Target</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Dynamic table rows will go here -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let cy;
+    let activeSpeciesNode = null;
+    const colorPalette = [
+        '#ff7043', '#42a5f5', '#66bb6a', '#ab47bc', '#ffa726',
+        '#29b6f6', '#d4e157', '#ef5350', '#26c6da', '#7e57c2',
+        '#8e24aa', '#00acc1', '#3949ab', '#fb8c00', '#7cb342'
+    ];
+    let expandedNodes = {};  // To keep track of expanded nodes for each species
+
+    async function fetchData(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Error ${response.status}: ${response.statusText}`);
+            return await response.json();
+        } catch (error) {
+            console.error(`Failed to fetch ${url}:`, error);
+            return null;
         }
+    }
 
-        // Function to initialize the Cytoscape network
-        function initializeNetwork() {
-            cy = cytoscape({
-                container: document.getElementById('network'),
-                elements: [
-                    { data: { id: 'species', label: 'Species' } } // Root node
-                ],
-                style: [
-                    {
-                        selector: 'node',
-                        style: {
-                            'label': 'data(label)',
-                            'width': '40px',
-                            'height': '40px',
-                            'text-valign': 'center',
-                            'text-halign': 'center',
-                            'color': 'white',
-                            'border-width': 2,
-                            'border-color': '#fff'
-                        }
-                    },
-                    {
-                        selector: '#species',
-                        style: {
-                            'background-color': '#FF6F61',
-                            'font-size': '18px',
-                            'width': '60px',
-                            'height': '60px',
-                            'font-weight': 'bold'
-                        }
-                    },
-                    {
-                        selector: '.species-node',
-                        style: {
-                            'background-color': '#FF6F61',
-                            'font-size': '16px',
-                            'border-width': 3
-                        }
-                    },
-                    {
-                        selector: '.source-node',
-                        style: {
-                            'background-color': '#5C6BC0',
-                            'font-size': '14px',
-                            'border-width': 2
-                        }
-                    },
-                    {
-                        selector: '.target-node',
-                        style: {
-                            'background-color': '#66BB6A',
-                            'font-size': '12px',
-                            'border-width': 1
-                        }
-                    },
-                    {
-                        selector: 'edge',
-                        style: {
-                            'width': 2,
-                            'line-color': '#ccc',
-                            'target-arrow-color': '#ccc',
-                            'target-arrow-shape': 'triangle'
+    function randomColor() {
+        return colorPalette[Math.floor(Math.random() * colorPalette.length)];
+    }
+
+    function initializeNetwork() {
+        cy = cytoscape({
+            container: document.getElementById('network'),
+            elements: [{ data: { id: 'species', label: 'Species' } }],
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'width': 50,
+                        'height': 50,
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'color': 'white',
+                        'font-size': '12px',
+                        'font-weight': 'bold',
+                        'background-color': 'data(color)',
+                        'border-width': 2,
+                        'border-color': '#fff',
+                        'opacity': 1
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 2,
+                        'line-color': '#ccc',
+                        'target-arrow-color': '#ccc',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        'opacity': 1
+                    }
+                },
+                {
+                    selector: '.faded',
+                    style: {
+                        'opacity': 0.2,
+                        'z-index': 0
+                    }
+                },
+                {
+                    selector: '.highlighted',
+                    style: {
+                        'border-width': 3,
+                        'border-color': '#ff5722',
+                        'line-color': '#ff5722',
+                        'target-arrow-color': '#ff5722',
+                        'z-index': 9999
+                    }
+                }
+            ],
+            layout: {
+                name: 'concentric',
+                concentric: node => (node.id() === 'species' ? 100 : 50),
+                levelWidth: () => 1,
+                spacingFactor: 2,
+            }
+        });
+
+        fetchData('/network/get_species/').then(data => {
+            if (data && data.nodes) {
+                const speciesNodes = data.nodes.map(name => ({
+                    data: { id: name, label: name, color: randomColor() }
+                }));
+
+                // Add species nodes
+                speciesNodes.forEach(node => {
+                    if (cy.getElementById(node.data.id).empty()) {
+                        cy.add(node);
+                    }
+                });
+
+                // Add edges from the central "species" node
+                speciesNodes.forEach(node => {
+                    const edgeId = `species->${node.data.id}`;
+                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
+                        cy.add({ data: { id: edgeId, source: 'species', target: node.data.id } });
+                    }
+                });
+
+                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+
+                cy.on('tap', 'node', event => {
+                    const nodeId = event.target.id();
+                    if (activeSpeciesNode && activeSpeciesNode !== nodeId) {
+                        collapsePreviousSpecies(activeSpeciesNode);  // Collapse the previous species' expanded nodes
+                    }
+                    highlightNodeAndEdges(event.target);
+                    if (nodeId.includes('_')) { // If it's a source node, expand its targets
+                        expandTargets(nodeId);
+                    } else {
+                        expandSources(nodeId);  // For species node, expand its sources
+                    }
+                    activeSpeciesNode = nodeId;
+                    updateChart(nodeId);  // Update the chart based on the selected node
+                    updateTable(nodeId);  // Update the table based on the selected node
+                });
+
+                cy.on('mouseover', 'node', event => {
+                    highlightNodeAndEdges(event.target);
+                });
+
+                cy.on('mouseout', 'node', () => {
+                    resetHighlights();
+                });
+            }
+        });
+    }
+
+    function highlightNodeAndEdges(node) {
+        cy.elements().addClass('faded');
+        node.removeClass('faded');
+        node.connectedEdges().removeClass('faded');
+        node.connectedEdges().targets().removeClass('faded');
+    }
+
+    function resetHighlights() {
+        cy.elements().removeClass('faded');
+    }
+
+    function expandSources(species) {
+        fetchData(`/network/get_sources/${species}/`).then(data => {
+            if (data && data.sources) {
+                const sourceNodes = data.sources.map(source => ({
+                    data: { id: `${species}_${source}`, label: source, color: randomColor() }
+                }));
+
+                // Add source nodes and edges
+                sourceNodes.forEach(node => {
+                    if (cy.getElementById(node.data.id).empty()) {
+                        cy.add(node);
+                    }
+                    const edgeId = `${species}->${node.data.id}`;
+                    if (cy.edges(`[id="${edgeId}"]`).length === 0) {
+                        cy.add({ data: { id: edgeId, source: species, target: node.data.id } });
+                    }
+                });
+
+                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+                expandedNodes[species] = sourceNodes; // Keep track of expanded nodes
+            }
+        });
+    }
+
+    function expandTargets(sourceNodeId) {
+        const [species, source] = sourceNodeId.split('_');
+        fetchData(`/network/get_targets/${species}/${source}`).then(data => {
+            if (data && data.targets) {
+                const targetNodes = data.targets.map(target => ({
+                    data: { id: `${species}_${source}_${target}`, label: target, color: randomColor() }
+                }));
+
+                // Add target nodes and edges only if they don't already exist
+                targetNodes.forEach(node => {
+                    if (cy.getElementById(node.data.id).empty()) {
+                        cy.add(node);
+                        const edgeId = `${sourceNodeId}->${node.data.id}`;
+                        if (cy.edges(`[id="${edgeId}"]`).length === 0) {
+                            cy.add({ data: { id: edgeId, source: sourceNodeId, target: node.data.id } });
                         }
                     }
-                ],
-                layout: {
-                    name: 'grid',
-                    rows: 1,
-                    padding: 10
-                }
+                });
+
+                cy.layout({ name: 'concentric', spacingFactor: 1.5 }).run();
+            }
+        });
+    }
+
+    function collapsePreviousSpecies(species) {
+        if (expandedNodes[species]) {
+            expandedNodes[species].forEach(node => {
+                const connectedEdges = cy.edges(`[source="${species}"][target="${node.data.id}"]`);
+                connectedEdges.forEach(edge => edge.removeClass('highlighted'));
             });
+        }
+        expandedNodes[species] = []; // Reset expanded nodes for the previous species
+    }
 
-            // Fetch species data dynamically
-            fetchData('/network/get_species/').then(data => {
-                if (data && data.nodes) {
-                    const speciesNodes = data.nodes.map(name => ({
-                        data: { id: name, label: name, parent: 'species', classes: 'species-node' }
-                    }));
-                    cy.add(speciesNodes);
-                    cy.layout({ name: 'grid' }).run();
-
-                    // Click event for species nodes
-                    cy.on('tap', 'node', function(event) {
-                        const nodeId = event.target.id();
-                        if (nodeId !== 'species') {
-                            resetNetwork();  // Reset the network before expanding the new node
-                            expandNetwork(nodeId); // Expand the new network for clicked species node
+    // Bar chart function
+    function updateChart(nodeId) {
+        fetchData(`/network/get_chart_data/${nodeId}/`).then(data => {
+            if (data && data.labels && data.values) {
+                const ctx = document.getElementById('myChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: `${nodeId} Data`,
+                            data: data.values,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true
+                            }
                         }
-                    });
-                } else {
-                    console.error('No species data received.');
-                }
-            });
-        }
+                    }
+                });
+            }
+        });
+    }
 
-        // Function to dynamically expand the network
-        function expandNetwork(species) {
-            // Fetch sources based on the clicked species node
-            fetchData(`/network/get_sources/${species}/`).then(data => {
-                if (data && data.sources) {
-                    const sourceNodes = data.sources.map(source => ({
-                        data: { id: source, label: source, parent: species, classes: 'source-node' }
-                    }));
-                    cy.add(sourceNodes);
-                    cy.layout({ name: 'grid', rows: 1 }).run();
+    // Table function
+    function updateTable(nodeId) {
+        fetchData(`/network/get_table_data/${nodeId}/`).then(data => {
+            const tbody = document.querySelector('#network-table tbody');
+            tbody.innerHTML = ''; // Clear existing table rows
 
-                    // Click event for source nodes
-                    cy.on('tap', 'node', function(event) {
-                        const sourceId = event.target.id();
-                        if (sourceId !== 'species') {
-                            expandSourceTargets(species, sourceId); // Expand targets for clicked source node
-                        }
-                    });
-                } else {
-                    console.error('No sources data received.');
-                }
-            });
-        }
+            if (data && data.table) {
+                data.table.forEach(row => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${row.species}</td><td>${row.source}</td><td>${row.target}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+        });
+    }
 
-        // Function to expand target nodes based on species and source
-        function expandSourceTargets(species, source) {
-            fetchData(`/network/get_targets/${species}/${source}/`).then(data => {
-                if (data && data.targets) {
-                    const targetNodes = data.targets.map(target => ({
-                        data: { id: target, label: target, parent: source, classes: 'target-node' }
-                    }));
-                    cy.add(targetNodes);
-                    cy.layout({ name: 'grid', rows: 1 }).run();
-
-                    // Click event for target nodes
-                    cy.on('tap', 'node', function(event) {
-                        const targetId = event.target.id();
-                        if (targetId !== 'species') {
-                            fetchDataset(species, source, targetId); // Fetch dataset for clicked target node
-                        }
-                    });
-                } else {
-                    console.error('No targets data received.');
-                }
-            });
-        }
-
-        // Function to reset the network by clearing all non-root nodes
-        function resetNetwork() {
-            const allNodes = cy.nodes();
-            allNodes.each(function(node) {
-                if (node.id() !== 'species') {
-                    node.remove();
-                }
-            });
-            document.getElementById('output').innerHTML = '';  // Clear the output section
-        }
-
-        // Function to fetch dataset based on species, source, and target
-        function fetchDataset(species, source, target) {
-            fetchData(`/network/get_dataset/${species}/${source}/${target}/`).then(data => {
-                if (data && data.csv) {
-                    const table = `<h3>Dataset for ${species} -> ${source} -> ${target}</h3>
-                        <table>
-                            <tr><th>ID</th><th>Value</th></tr>
-                            ${data.csv.split("\n").map(row => {
-                                const [id, value] = row.split(",");
-                                return `<tr><td>${id}</td><td>${value}</td></tr>`;
-                            }).join('')}
-                        </table>`;
-                    document.getElementById('output').innerHTML = table;
-                } else {
-                    console.error('No dataset received.');
-                }
-            });
-        }
-
-        // Event listener to run once the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', initializeNetwork);
-    </script>
+    // Initialize network
+    document.addEventListener('DOMContentLoaded', initializeNetwork);
+</script>
 </body>
 </html>

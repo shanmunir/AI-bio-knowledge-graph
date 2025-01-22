@@ -3,13 +3,20 @@ from django.http import JsonResponse
 import csv
 import os
 
+from .models import Species
+from .utils import  *
+
 # Create your views here.
 
 
 def home(request):
+    species_list  = get_all_species()
+    # source_list = get_sources_by_specie_id(3)
+    # target_list = get_target_by_source_and_specie_id(3,8)
+    # data = get_unique_relations_list(3,8,5)
     if request.method == 'POST':
         return render(request, 'biology/extractedData.html')
-    return render(request, 'biology/home.html')
+    return render(request, 'biology/home.html', {'species_list': species_list})
 
 
 def documentation(request):
@@ -39,8 +46,12 @@ def network(request):
 
 # Example species list
 def get_species(request):
-    species_list = ["Human", "Mouse", "Dog", "Cat"]
-    return JsonResponse({"nodes": species_list})
+    # species_list = ["Human", "Mouse", "Dog", "Cat"]
+    species_list = get_all_species()
+    species_names = [specie['specie_name'] for specie in species_list]
+    print(species_names)
+    # return JsonResponse({"nodes": species_list})
+    return JsonResponse({"nodes": species_names})
 
 
 # Example sources based on species
