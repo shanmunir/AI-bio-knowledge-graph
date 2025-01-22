@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 import csv
 import os
+import io
 
 from .models import Species
 from .utils import  *
@@ -43,39 +44,62 @@ from django.http import JsonResponse
 def network(request):
     return render(request, 'biology/network.html')
 
+all_species_with_ids = []
+all_sources_with_ids = []
+all_targets_with_ids = []
 
 # Example species list
 def get_species(request):
     # species_list = ["Human", "Mouse", "Dog", "Cat"]
+
+    global all_species_with_ids
     species_list = get_all_species()
+    all_species_with_ids = species_list
+
     species_names = [specie['specie_name'] for specie in species_list]
-    print(species_names)
     # return JsonResponse({"nodes": species_list})
     return JsonResponse({"nodes": species_names})
 
 
 # Example sources based on species
 def get_sources(request, species):
-    sources_data = {
-        "Human": ["Source A", "Source B", "Source C"],
-        "Mouse": ["Source X", "Source Y", "Source Z"],
-        "Dog": ["Source 1", "Source 2", "Source 3"],
-        "Cat": ["Source P", "Source Q", "Source R"]
-    }
-    sources = sources_data.get(species, [])
-    return JsonResponse({"sources": sources})
+    global all_species_with_ids
+    global all_sources_with_ids
+    species_id = int([i['id'] for i in all_species_with_ids if species in i['specie_name']][0])
+    sources_data_list = get_sources_by_specie_id(species_id)
+    all_sources_with_ids = sources_data_list
+    species_data = [source['source_name'] for source in sources_data_list]
+    # sources_data = {
+    #     "Human": ["Source A", "Source B", "Source C"],
+    #     "Mouse": ["Source X", "Source Y", "Source Z"],
+    #     "Dog": ["Source 1", "Source 2", "Source 3"],
+    #     "Cat": ["Source P", "Source Q", "Source R"]
+    # }
+    # sources = sources_data.get(species, [])
+    # return JsonResponse({"sources": sources})
+    return JsonResponse({"sources": species_data})
 
 
 # Example targets based on species and source
 def get_targets(request, species, source):
-    targets_data = {
-        ("Human", "Source A"): ["Target 1", "Target 2", "Target 3"],
-        ("Human", "Source B"): ["Target X", "Target Y", "Target Z"],
-        ("Mouse", "Source X"): ["Target 5", "Target 6", "Target 7"],
-        ("Dog", "Source 1"): ["Target 8", "Target 9"]
-    }
-    targets = targets_data.get((species, source), [])
-    return JsonResponse({"targets": targets})
+    global all_species_with_ids
+    global all_sources_with_ids
+    global all_targets_with_ids
+    species_id = int([i['id'] for i in all_species_with_ids if species in i['specie_name']][0])
+    source_id = int([i['id'] for i in all_sources_with_ids if source in i['source_name']][0])
+    target_data_list = get_target_by_source_and_specie_id(species_id, source_id)
+    all_targets_with_ids = target_data_list
+    target_data = [target['target_name'] for target in target_data_list]
+
+    # targets_data = {
+    #     ("Human", "Source A"): ["Target 1", "Target 2", "Target 3"],
+    #     ("Human", "Source B"): ["Target X", "Target Y", "Target Z"],
+    #     ("Mouse", "Source X"): ["Target 5", "Target 6", "Target 7"],
+    #     ("Dog", "Source 1"): ["Target 8", "Target 9"]
+    # }
+    # targets = targets_data.get((species, source), [])
+    # return JsonResponse({"targets": targets})
+    return JsonResponse({"targets": target_data})
 
 
 # Example dataset for species, source, and target
